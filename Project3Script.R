@@ -22,9 +22,7 @@ cars= read.csv(file.choose(), header = TRUE, na.string="NA", row.names=1)
 # verify loading
 head(cars)
 
-#convert respective integer data into catagorical values
-cars$vs <- as.factor(cars$vs)
-cars$am <- as.factor(cars$am)
+
 
 ###################################################
 #
@@ -42,12 +40,21 @@ pairs(cars)
 # There is just too much here. But we've thought about this problem
 # and we know we can pare down the list of candidate predictors
 
-# A new data.frame of the relevant variables
+# remove catagorial vars for comparisson
 k = subset(cars, select = c(mpg,hp,wt,vs,am,carb))
 pairs(k)
 
+#convert respective integer data into catagorical values
+cars$vs = factor(cars$vs)
+cars$am = factor(cars$am)
+
 # Construct a correlation matrix now as well.
-cor(cars,use="complete.obs")
+cor(k,use="complete.obs")
+
+#convert respective integer data into catagorical values
+cars$vs = factor(cars$vs)
+cars$am = factor(cars$am)
+
 
 
 ###################################################

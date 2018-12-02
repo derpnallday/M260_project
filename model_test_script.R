@@ -59,6 +59,10 @@ cars = read.csv(file.choose())
 head(cars)
 names(cars)
 
+#take a look at our respone var
+hist(cars$mpg)
+summary(cars$mpg)
+
 #convert respective vars to catagorical vars
 cars$vs = factor(cars$vs)
 cars$am = factor(cars$am)
@@ -66,14 +70,30 @@ cars$am = factor(cars$am)
 # OK, explore a little. Draw a picture
 pairs(cars)
 
-#subset for cor matrix
-k = subset(cars, select = c(mpg,hp,wt))
+
+#looks like we want to remove dips, cyl, and drat
+#since they are highly correlated with other vars
+#also removing gear since it has lowest correlation
+
+c = subset(cars, select = c(mpg,hp,wt,vs,am))
+pairs (c)
+
+
+#subset for cor matrix of all remaning numeric vars
+k = subset(cars, select = c(mpg,cyl,disp,hp,wt,qsec,gear,carb))
+
 # Construct a correlation matrix now as well.
 cor(k,use="complete.obs")
 
-#######################################################
 
-# build individual models on numeric explanatory vars to see 
+
+#######################################################
+#
+# MODEL TESTING
+#
+#######################################################
+# build individual models on numeric explanatory vars to
+# see how well they produce a model
 #on mpg~weight
 m1 = lm(mpg~wt, data = cars, na.action = na.exclude)
 summary(m1)
@@ -89,8 +109,6 @@ abline(h=0)
 #mpg~wt shows good negative correlation
 plot(mpg~wt, data = cars)
 abline(m1)
-
-AIC(m1)
 
 #test mpg~hp
 m2 = lm(mpg~hp, data = cars, na.action = na.exclude)
@@ -108,86 +126,89 @@ abline(h=0)
 plot(mpg~hp, data = cars)
 abline(m2)
 
-AIC(m2)
 
 ##########################################################
 #build models on catagorical vars
 #test mpg~vs
 m3 = lm(mpg~vs, data = cars, na.action = na.exclude)
 summary(m3)
-# an improved fit with both variables significant. 
-# Check the residuals
-qqPlot(resid(m3))
-par(mfrow=c(1,2))
-plot(resid(m3)~vs, data = cars,main="Residuals vs. vs")
 
-stripchart(resid(m3)~vs, data = cars, method = "jitter",
-           vertical = TRUE,main="Residuals vs. vs")
-AIC(m3)
+# SVAs
+#qq looks good
+qqPlot(resid(m3))
+
+#variances are skewed slightly to right for both types
+plot(resid(m3)~vs, data = cars)
+
 
 #mpg~am
 m4 = lm(mpg~am, data = cars, na.action = na.exclude)
 summary(m4)
-# an improved fit with both variables significant. 
-# Check the residuals
+
+# SVAs
+#qq looks good
 qqPlot(resid(m4))
-par(mfrow=c(1,2))
-plot(resid(m4)~am, data = cars,main="Residuals vs. am")
 
-stripchart(resid(m4)~am, data = cars, method = "jitter",
-           vertical = TRUE,main="Residuals vs. am")
+#variances are skewed slightly to right for manual
+plot(resid(m4)~am, data = cars)
 
-AIC(m4)
-
+###########################################################
 #lets try combining vars and do some AIC testing
 #just numerics
 m5 = lm(mpg~wt+hp, data = cars, na.action = na.exclude)
 summary(m5)
 #AIC = 156.6523
-AIC(m5)
 
 #with vs and both numerics
 m6 = lm(mpg~vs+wt+hp, data = cars, na.action = na.exclude)
 summary(m6)
 #AIC = 157.5052
-AIC(m6)
 
 #with am and both numerics
 m7 = lm(mpg~am+wt+hp, data = cars, na.action = na.exclude)
 summary(m7)
 #AIC = 156.1348
-AIC(m7)
 
 #using all selected vars
 m8 = lm(mpg~am+vs+wt+hp, data = cars, na.action = na.exclude)
 summary(m8)
 #AIC = 156.0584
-AIC(m8)
 
+##########################################################
 #now try with interaction terms
 
-#we already know from AIC
-#vs as interaction term
-
-m9 = lm(mpg~wt+hp*vs, data = cars, na.action = na.exclude)
+#we already know from AIC model with both hp and wt are better
+#with hp*wt with am
+m9 = lm(mpg~am+wt*hp, data = cars, na.action = na.exclude)
 summary(m9)
-#AIC = 154.9286
-AIC(m9)
+#AIC = 150.4317
+
+#try hp*wt with vs
+m10 = lm(mpg~vs+wt*hp, data = cars, na.action = na.exclude)
+summary(m10)
+
+#try hp*wt with vs and am
+m11 = lm(mpg~vs+am+wt*hp, data = cars, na.action = na.exclude)
+summary(m11)
 
 
+#test models
+AIC(m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11)
 
-#looks like using all vars is the best model
+#best model is m10
+
+m = m10
+summary(m)
+
+
 # lets run more tests 
 # Check the residuals
 par(mfrow=c(1,1))
 qqPlot(resid(m))
-par(mfrow=c(2,2))
-plot(resid(m)~am, data = cars,main="Residuals vs. am")
+par(mfrow=c(1,2))
 plot(resid(m)~vs, data = cars,main="Residuals vs. vs")
 
 #par(mfrow=c(1,2))
-stripchart(resid(m)~am, data = cars, method = "jitter",
-           vertical = TRUE,main="Residuals vs. am")
 stripchart(resid(m)~vs, data = cars, method = "jitter",
            vertical = TRUE,main="Residuals vs. vs")
 
@@ -195,27 +216,25 @@ stripchart(resid(m)~vs, data = cars, method = "jitter",
 require(DAAG)
 vif(m)
 
-#slight issues with manual transmition residuals but other resids look good
+#slight issues with straight engine. also outlier in v engine residuals but still mostly good
 #variance for levels look fine
-
 
 # plot this using different symbols for each group and
 # and different colors for each group
 
 (beta0    = coef(m)["(Intercept)"])
-(betaAm   = coef(m)["am1"])
 (betaVs   = coef(m)["vs1"])
 (betaWt   = coef(m)["wt"])
 (betaHp   = coef(m)["hp"])
-
+(betaWtHp  = coef(m)["wt:hp"])
 
 # lets look at levels of or catagorical against numeric vars
-#first against engine type
+#check against engine type
 #mpg~wt
 par(mfrow=c(1,2))
 plot(mpg~wt, col=colors[as.numeric(cars$vs)],
      pch=symbols[as.numeric(cars$occupation)],
-     xlab="hp",
+     xlab="Weight",
      ylab="MPG",
      main="MPG by engine type and weight",
      data=cars)
@@ -236,67 +255,13 @@ plot(mpg~hp, col=colors[as.numeric(cars$vs)],
 abline(beta0,betaHp, col=colors[1])      
 abline(beta0 + betaVs,betaHp, col=colors[2])
 
-#############################
-#now against transmition
-#mpg~wt
-par(mfrow=c(1,2))
-plot(mpg~wt, col=colors[as.numeric(cars$am)],
-     pch=symbols[as.numeric(cars$occupation)],
-     xlab="hp",
-     ylab="MPG",
-     main="MPG by engine type and weight",
-     data=cars)
-
-# fit ablines over levels
-abline(beta0,betaWt, col=colors[1])      
-abline(beta0 + betaAm, betaWt, col=colors[2])
-
-#mpg~hp
-plot(mpg~hp, col=colors[as.numeric(cars$am)],
-     pch=symbols[as.numeric(cars$occupation)],
-     xlab="hp",
-     ylab="MPG",
-     main="MPG by engine type and hp",
-     data=cars)
-
-# fit ablines over levels
-abline(beta0,betaHp, col=colors[1])      
-abline(beta0 + betaAm, betaHp, col=colors[2])
-
-
-
-
-
-
 # it's nice to add a legend (see ? legend for more info)
-legend("topright", fill=colors, c("Journalist","University Lecturer"))  
+legend("topright", fill=colors, c("V-shaped","S-Shaped"))  
      
-# Now consider an interaction term. There is no obvious reason to 
-# do this (i.e. the graph doesn't suggest this), but we will do
-# it for illustration
-m8 = lm(mpg~wt+hp*vs, data = cars, na.action = na.exclude)
-summary(m8)
-#AIC = 154.9286
-AIC(m8)
 
-# slight improvment
+# Test result:
+           # Best model takes both HP and Weight with engine type as the interaction term
            
-
-plot(resid(m3)~age, data = cars)
-stripchart(resid(m3)~occupation, data = cars, method = "jitter",
-           vertical = TRUE)
-           
-# no problems with the SVAs
-# comparison of different models
-AIC(m1, m2, m3)
-
-# Conclusions:
-           # Systolic blood carsure is well-modeled by age and occupation
-           # There is no evidence of interaction between the two 
-           # explanatory variables
-           
-# Model 2, using age and occupation to model systolic blood carsure
-           # seems 'best'
 
 # Interpretation:
 
@@ -306,7 +271,7 @@ AIC(m1, m2, m3)
 #  This model explains about 90% of the variation in sbp (multiple R^2)
 #  Mean sbp increases an estimated 1.54 points for each one-year increase in age (Beta1^)
 #  Mean sbp is lower by an estimated 7.51 points for university lecturers (vs.journalists) (Beta0^)
-confint(m2)
+confint(m)
 #
 #  True mean sbp increase for each one-year increase in age is estimated to be 
 #  in the interval (1.32, 1.76) ( 95% CI for Beta1)
@@ -317,46 +282,69 @@ confint(m2)
 
 # estimate mean for a particular value of age and occupation
 
-# 65-year-old journalist
-journalist65 = data.frame(age = 65, occupation = '0')
+# V-shaped engine with 110 hp and 2.62 (thousand) as weight
+#actual is 21 mpg - prediction 22.39
+car1 = data.frame(hp = 110, wt = 2.62, vs = '0')
+predict(m, new = car1, interval = "confidence" )
+predict(m, new = car1, interval = "prediction" )
 
-# 65-year-old instructor
-instructor65 = data.frame(age = 65, occupation = '1')
+# V-shaped engine with 245 hp and 3.57(thousand) as weight
+#actual 14.3 - prediction 15.45
+car2 = data.frame(hp = 245, wt = 3.57, vs = '0')
+predict(m, new = car2, interval = "confidence" )
+predict(m, new = car2, interval = "prediction" )
 
-# 40-year-old journalist
-journalist40 = data.frame(age = 40, occupation = '0')
+# S-shaped engine with 93 hp and 2.32 (thousand) as weight
+#around 22.8 prediction 25.8504
+car3 = data.frame(hp = 93, wt = 2.32, vs = '1')
+predict(m, new = car3, interval = "confidence" )
+predict(m, new = car3, interval = "prediction" )
 
-# 65-year-old instructor
-instructor40 = data.frame(age = 40, occupation = '1')
+# S-shaped engine with 66 hp and 2.2 (thousand) as weight
+#around 32.4 prediction 27.95208
+car4 = data.frame(hp = 66, wt = 2.2, vs = '1')
+predict(m, new = car4, interval = "confidence" )
+predict(m, new = car4, interval = "prediction" )
 
-predict(m2, new = journalist65, interval = "confidence" )
-predict(m2, new = instructor65, interval = "confidence" )
-predict(m2, new = journalist40, interval = "confidence" )
-predict(m2, new = instructor40, interval = "confidence" )
 
-# estimate individual reponse for a particular value of age and occupation
 
-predict(m2, new = journalist65, interval = "prediction" )
-predict(m2, new = instructor65, interval = "prediction" )
-predict(m2, new = journalist40, interval = "prediction" )
-predict(m2, new = instructor40, interval = "prediction" )
 
 
 # Scope of inference?
 
 # Cause/effect
-# To infer cause/effect would mea that a change in age causes a change in mean sbp. Also, a change in occupation
-# causes a change in mean sbp.
-# Cause/effect is not justified since this is an observational study only
+# We can see that increasing hp negatively affects the MPG value
+# We can see increasing the weight negatively affects the MPG value
+# V-shaped engines tend to have better MPG than S-shaped engines
+# predictions for V-shaped tend to undershoot while S-shapes overshoot real value slightly
 
 # Generalization
-# We see an association between age, occupation and sbp in the sample.
+# We see an association between hp, weight, and engine type on MPG in the sample.
 # To generalize would mean we would expect to see the same association
 # in the larger population that this sample represents.
-# Generalization is not justified here. There is no indication of where
-# or how the sample was obtained. We have no way of describing what population
-# this sample might represent.
+# Generalization is not justified here. This dataset was taken in 1974. Technology
+# has changed drastically and some of these factors may influence MPG differently than before
+# One noteble example is transmition type, which was left out. Modern day automatic transmitions
+# tend to get way better MPG than manual counterparts eventhough our testing said otherwise.
 
-# So:  In this sample of 28 instructors and journalists, there is a statistically significant association
-# between sbp (response) and age and occupation (explanatory). We cannot infer cause/effect and
-# generalizing to any larger group would be speculative.
+# So:  In this sample of 33 cars, there is a statistically significant association
+# between MPG (response) and hp, wt, and engine type (explanatory). We cannot infer cause/effect 
+# since this data is using older vehicles and technolgy has change so much since the test date.
+
+########################################################
+#Now lets do some more analysis on model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

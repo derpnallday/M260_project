@@ -74,6 +74,7 @@ cor(k,use="complete.obs")
 #on mpg~weight since weight was best correlation with our response
 m1 = lm(mpg~wt, data = cars, na.action = na.exclude)
 summary(m1)
+AIC(m1)
 
 par(mfrow=c(1,2))
 # SVAs
@@ -84,13 +85,13 @@ qqPlot(resid(m1))
 plot(resid(m1)~wt, data = cars)
 abline(h=0)
 
-AIC(m1)
 
 
 #lets try combining vars 
 #just numerics
 m2 = lm(mpg~wt+hp, data = cars, na.action = na.exclude)
 summary(m2)
+AIC(m2)
 
 par(mfrow=c(1,3))
 # SVAs
@@ -98,18 +99,18 @@ par(mfrow=c(1,3))
 qqPlot(resid(m2))
 
 #variances in center is good but spreads on upper and lower range for both
-par(mfrow=c(1,2))
 plot(resid(m2)~wt, data = cars)
 abline(h=0)
 plot(resid(m2)~hp, data = cars)
 abline(h=0)
 
-AIC(m2)
+
 
 
 #with vs and both numerics
 m3 = lm(mpg~vs+wt+hp, data = cars, na.action = na.exclude)
 summary(m3)
+AIC(m3)
 
 par(mfrow=c(1,3))
 # SVAs
@@ -123,11 +124,12 @@ plot(resid(m3)~hp, data = cars)
 abline(h=0)
 
 
-AIC(m3)
 
 #now try with interaction terms
 #try hp*wt with vs since it makes sense for weight and hp to have an interaction on MPG
 m4 = lm(mpg~vs+wt*hp, data = cars, na.action = na.exclude)
+summary(m4)
+AIC(m4)
 
 par(mfrow=c(1,3))
 # SVAs
@@ -135,14 +137,12 @@ par(mfrow=c(1,3))
 qqPlot(resid(m4))
 
 #variance for hp slight improvement from last model
-par(mfrow=c(1,3))
 plot(resid(m4)~wt, data = cars)
 abline(h=0)
 plot(resid(m2)~hp, data = cars)
 abline(h=0)
-summary(m4)
 
-AIC(m4)
+
 
 
 #test models
@@ -150,7 +150,7 @@ AIC(m1,m2,m3,m4)
 
 #best model is m9
 
-m = m9
+m = m4
 summary(m)
 
 
@@ -159,11 +159,13 @@ summary(m)
 par(mfrow=c(1,1))
 qqPlot(resid(m))
 par(mfrow=c(1,2))
-plot(resid(m)~vs, data = cars,main="Residuals vs. vs")
+plot(resid(m)~vs, data = cars,main="Residuals vs. engine type", names=engineTypes)
+abline(h=0)
 
 #par(mfrow=c(1,2))
 stripchart(resid(m)~vs, data = cars, method = "jitter",
-           vertical = TRUE,main="Residuals vs. vs")
+           vertical = TRUE,main="Residuals vs. engine type", names=engineTypes)
+abline(h=0)
 
 #grab vif values
 require(DAAG)
